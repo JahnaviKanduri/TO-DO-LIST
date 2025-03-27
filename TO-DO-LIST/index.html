@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #app {
+      width: 100%;
+      max-width: 600px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      text-align: center;
+    }
+    form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    input, select, button {
+      padding: 10px;
+      font-size: 16px;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      margin-bottom: 5px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+    }
+    li.completed span.task-text {
+      text-decoration: line-through;
+      color: #888;
+    }
+    li.overdue span.task-text {
+      color: red;
+    }
+    .category {
+      font-style: italic;
+      color: #555;
+      margin-left: 10px;
+    }
+    button.delete {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 4px;
+      padding: 5px 10px;
+    }
+    button.delete:hover {
+      background: #c0392b;
+    }
+    #dark-mode-toggle {
+      margin-left: auto;
+      cursor: pointer;
+      background: #333;
+      color: #fff;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+    }
+    #dark-mode-toggle:hover {
+      background: #555;
+    }
+    body.dark-mode {
+      background-color: #333;
+      color: #f0f0f0;
+    }
+    body.dark-mode #app {
+      background-color: #444;
+      color: #fff;
+    }
+    body.dark-mode input, body.dark-mode select, body.dark-mode button {
+      background: #555;
+      color: #fff;
+    }
+    .filter-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .filter-buttons button {
+      padding: 8px 15px;
+      cursor: pointer;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    .filter-buttons button:hover {
+      background-color: #2980b9;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>To-Do List</h1>
+    <div class="filter-buttons">
+      <button id="show-all">Show All</button>
+      <button id="show-completed">Show Completed</button>
+      <button id="show-pending">Show Pending</button>
+    </div>
+    <form id="task-form">
+      <input type="text" id="task-input" placeholder="Add a new task..." required>
+      <input type="date" id="due-date">
+      <select id="category">
+        <option value="Work">Work</option>
+        <option value="Personal">Personal</option>
+        <option value="Shopping">Shopping</option>
+      </select>
+      <button type="submit">Add Task</button>
+      <button type="button" id="dark-mode-toggle">Toggle Dark Mode</button>
+    </form>
+    <ul id="task-list"></ul>
+  </div>
+
+  <script>
+    const taskForm = document.getElementById('task-form');
+    const taskInput = document.getElementById('task-input');
+    const dueDateInput = document.getElementById('due-date');
+    const categoryInput = document.getElementById('category');
+    const taskList = document.getElementById('task-list');
+    const darkModeToggle = document.getElementById('dark-mode-toggle');
+    const showAllButton = document.getElementById('show-all');
+    const showCompletedButton = document.getElementById('show-completed');
+    const showPendingButton = document.getElementById('show-pending');
+
+    // Load tasks from local storage on page load
+    document.addEventListener('DOMContentLoaded', loadTasks);
+
+    // Add a new task
+    taskForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const taskText = taskInput.value.trim();
+      const dueDate = dueDateInput.value;
+      const category = categoryInput.value;
+
+      if (taskText) {
+        addTask(taskText, dueDate, category);
+        taskInput.value = '';
+        dueDateInput.value = '';
+        categoryInput.value = 'Work';
+      }
+    });
+
+    // Toggle dark mode
+    darkModeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+    });
+
+    // Add a task to the list
+    function addTask(text, dueDate = '', category = 'Work', completed = false) {
+      const li = document.createElement('li');
+
+      if (completed) li.classList.add('completed');
+      if (dueDate && new Date(dueDate) < new Date() && !completed) li.classList.add('overdue');
+
+      const taskSpan = document.createElement('span');
+      taskSpan.textContent = text;
+      taskSpan.classList.add('task-text');
+      li.appendChild(taskSpan);
+
+      // Editing the task
+      taskSpan.ondblclick = () => {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = taskSpan.textContent;
+        taskSpan.replaceWith(input);
+
+        input.onblur = () => {
+          if (input.value.trim()) {
+            taskSpan.textContent = input.value.trim();
+            input.replaceWith(taskSpan);
+            saveTasks();
+          } else {
+            alert('Task cannot be empty!');
+            input.focus();
+          }
+        };
+
+        input.onkeydown = (e) => {
+          if (e.key === 'Enter') input.blur();
+        };
+
+        input.focus();
+      };
+
+      const categorySpan = document.createElement('span');
+      categorySpan.textContent = ` [${category}]`;
+      categorySpan.classList.add('category');
+      li.appendChild(categorySpan);
+
+      if (dueDate) {
+        const dueDateSpan = document.createElement('span');
+        dueDateSpan.textContent = ` (Due: ${dueDate})`;
+        dueDateSpan.classList.add('due-date');
+        li.appendChild(dueDateSpan);
+      }
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = completed;
+      checkbox.onchange = () => {
+        li.classList.toggle('completed');
+        li.classList.remove('overdue');
+        saveTasks();
+      };
+      li.prepend(checkbox);
+
+      const deleteButton = document.createElement('button');
+      deleteButton.textContent = 'Delete';
+      deleteButton.classList.add('delete');
+      deleteButton.onclick = () => {
+        taskList.removeChild(li);
+        saveTasks();
+      };
+      li.appendChild(deleteButton);
+
+      taskList.appendChild(li);
+      saveTasks();
+    }
+
+    // Save tasks to local storage
+    function saveTasks() {
+      const tasks = [];
+      taskList.querySelectorAll('li').forEach((li) => {
+        const text = li.querySelector('.task-text').textContent;
+        const dueDate = li.querySelector('.due-date')?.textContent.replace(' (Due: ', '').replace(')', '');
+        const category = li.querySelector('.category').textContent.replace(' [', '').replace(']', '');
+        const completed = li.classList.contains('completed');
+        tasks.push({ text, dueDate, category, completed });
+      });
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    // Load tasks from local storage
+    function loadTasks() {
+      const tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+      tasks.forEach(task => addTask(task.text, task.dueDate, task.category, task.completed));
+    }
+
+    // Filter tasks based on completion status
+    showAllButton.addEventListener('click', () => {
+      const tasks = taskList.querySelectorAll('li');
+      tasks.forEach(task => task.style.display = 'flex');
+    });
+
+    showCompletedButton.addEventListener('click', () => {
+      const tasks = taskList.querySelectorAll('li');
+      tasks.forEach(task => {
+        if (task.classList.contains('completed')) {
+          task.style.display = 'flex';
+        } else {
+          task.style.display = 'none';
+        }
+      });
+    });
+
+    showPendingButton.addEventListener('click', () => {
+      const tasks = taskList.querySelectorAll('li');
+      tasks.forEach(task => {
+        if (!task.classList.contains('completed')) {
+          task.style.display = 'flex';
+        } else {
+          task.style.display = 'none';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
